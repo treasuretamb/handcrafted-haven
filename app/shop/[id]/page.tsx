@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useCart } from "../../context/CartContext";
 
 const PRODUCTS: Record<string, {
   name: string; price: number; category: string; image: string;
@@ -50,10 +51,12 @@ function StarRating({ rating, size = "md" }: { rating: number; size?: "sm" | "md
 
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
   const product = PRODUCTS[params.id];
+  const { addToCart } = useCart();
   const [newRating, setNewRating] = useState(5);
   const [newReview, setNewReview] = useState("");
   const [newAuthor, setNewAuthor] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [addedToCart, setAddedToCart] = useState(false);
 
   if (!product) {
     return (
@@ -65,6 +68,18 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
         </Link>
       </div>
     );
+  }
+
+  function handleAddToCart() {
+    addToCart({
+      id: Number(params.id),
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      seller: product.seller,
+    });
+    setAddedToCart(true);
+    setTimeout(() => setAddedToCart(false), 2000);
   }
 
   function handleReviewSubmit(e: React.FormEvent) {
@@ -102,8 +117,15 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               </div>
               <div className="mt-8">
                 <p className="text-4xl font-bold text-[var(--primary)] mb-4">${product.price.toFixed(2)}</p>
-                <button className="w-full bg-[var(--primary)] hover:bg-[var(--dark)] text-white font-semibold py-4 rounded-xl transition text-lg">
-                  Add to Cart
+                <button
+                  onClick={handleAddToCart}
+                  className={`w-full font-semibold py-4 rounded-xl transition text-lg ${
+                    addedToCart
+                      ? "bg-green-600 text-white"
+                      : "bg-[var(--primary)] hover:bg-[var(--dark)] text-white"
+                  }`}
+                >
+                  {addedToCart ? "✓ Added to Cart!" : "Add to Cart"}
                 </button>
               </div>
             </div>
@@ -137,8 +159,9 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           ) : (
             <div className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-[var(--dark)] mb-1">Your Name</label>
+                <label htmlFor="reviewer-name" className="block text-sm font-semibold text-[var(--dark)] mb-1">Your Name</label>
                 <input
+                  id="reviewer-name"
                   type="text"
                   value={newAuthor}
                   onChange={(e) => setNewAuthor(e.target.value)}
@@ -161,8 +184,9 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-[var(--dark)] mb-1">Your Review</label>
+                <label htmlFor="review-text" className="block text-sm font-semibold text-[var(--dark)] mb-1">Your Review</label>
                 <textarea
+                  id="review-text"
                   rows={4}
                   value={newReview}
                   onChange={(e) => setNewReview(e.target.value)}
