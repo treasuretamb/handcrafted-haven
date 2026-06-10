@@ -3,9 +3,11 @@ import "./globals.css";
 import Link from "next/link";
 import { useState } from "react";
 import { CartProvider, useCart } from "./context/CartContext";
+import { useSession, signOut, SessionProvider } from "next-auth/react";
 
 function Navbar() {
   const { totalItems } = useCart();
+  const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -39,12 +41,26 @@ function Navbar() {
               </span>
             )}
           </Link>
-          <Link href="/sign-in" className="px-5 py-2 border border-white rounded hover:bg-white hover:text-[var(--primary)] transition">
-            Sign In
-          </Link>
-          <Link href="/sign-up" className="px-5 py-2 bg-[var(--accent)] text-[var(--primary)] font-medium rounded hover:bg-yellow-400 transition">
-            Sign Up
-          </Link>
+          {session ? (
+            <>
+              <span className="text-sm text-white/80">Hi, {session.user?.name?.split(" ")[0]}</span>
+              <button
+                onClick={() => signOut()}
+                className="px-5 py-2 border border-white rounded hover:bg-white hover:text-[var(--primary)] transition text-sm"
+              >
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/sign-in" className="px-5 py-2 border border-white rounded hover:bg-white hover:text-[var(--primary)] transition">
+                Sign In
+              </Link>
+              <Link href="/sign-up" className="px-5 py-2 bg-[var(--accent)] text-[var(--primary)] font-medium rounded hover:bg-yellow-400 transition">
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Right Side */}
@@ -94,6 +110,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col">
+        <SessionProvider>
         <CartProvider>
           <Navbar />
           <main className="flex-grow">{children}</main>
@@ -123,6 +140,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <p className="text-center text-white/40 text-xs mt-8">© {new Date().getFullYear()} Handcrafted Haven. All rights reserved.</p>
           </footer>
         </CartProvider>
+        </SessionProvider>
       </body>
     </html>
   );

@@ -1,16 +1,19 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function SignUpPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [isSeller, setIsSeller] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name || !email || !password || !confirm) {
       setError("Please fill in all fields.");
@@ -24,8 +27,25 @@ export default function SignUpPage() {
       setError("Password must be at least 8 characters.");
       return;
     }
+
+    setLoading(true);
     setError("");
-    alert(`Account created as ${isSeller ? "Seller" : "Buyer"}! (auth not yet implemented)`);
+
+    const res = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password, role: isSeller ? "seller" : "buyer" }),
+    });
+
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error || "Something went wrong.");
+      return;
+    }
+
+    router.push("/sign-in?registered=true");
   }
 
   return (
@@ -126,9 +146,10 @@ export default function SignUpPage() {
 
           <button
             onClick={handleSubmit}
-            className="w-full bg-[var(--primary)] hover:bg-[var(--dark)] text-white font-semibold py-3 rounded-lg transition text-sm"
+            disabled={loading}
+            className="w-full bg-[var(--primary)] hover:bg-[var(--dark)] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition text-sm"
           >
-            Create Account
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </div>
 
