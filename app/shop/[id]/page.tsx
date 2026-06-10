@@ -1,43 +1,25 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCart } from "../../context/CartContext";
 
-const PRODUCTS: Record<string, {
-  name: string; price: number; category: string; image: string;
-  seller: string; sellerId: string; description: string; rating: number;
-  reviews: { author: string; rating: number; comment: string; date: string }[];
-}> = {
-  "1": {
-    name: "Snowman Figurine", price: 29.99, category: "Decor", image: "/snowman-figurine.webp",
-    seller: "FrostyCreations", sellerId: "1",
-    description: "This delightful hand-sculpted snowman figurine brings the magic of winter indoors. Each piece is individually thrown on a pottery wheel, bisque fired, hand-painted with food-safe glazes, and glaze fired to a beautiful finish. No two are exactly alike.",
-    rating: 4.5,
-    reviews: [
-      { author: "Emily R.", rating: 5, comment: "Absolutely adorable! Perfect gift for the holidays. The detail work is incredible.", date: "December 2024" },
-      { author: "James T.", rating: 4, comment: "Beautiful piece. Arrived well-packaged. Slightly smaller than I expected but still love it.", date: "November 2024" },
-    ],
-  },
-  "2": {
-    name: "Handturned Wooden Vase", price: 39.99, category: "Home", image: "/wooden-vase.webp",
-    seller: "WoodWhisperer", sellerId: "2",
-    description: "Turned from a single piece of sustainably harvested Pacific madrone, this vase showcases the natural beauty of wood grain with a food-safe mineral oil finish. Use it for dried flowers, as a pencil holder, or simply as a sculptural object.",
-    rating: 5.0,
-    reviews: [
-      { author: "Priya M.", rating: 5, comment: "Stunning craftsmanship. The wood grain is absolutely beautiful. A true work of art.", date: "January 2025" },
-      { author: "David L.", rating: 5, comment: "Exceeded expectations. Super smooth finish, perfect proportions. Very happy!", date: "February 2025" },
-    ],
-  },
-  "3": {
-    name: "Greek Bronze Bracelet", price: 49.99, category: "Jewelry", image: "/greek-bracelet.webp",
-    seller: "AncientCraft", sellerId: "3",
-    description: "Inspired by jewelry found in ancient Greek tombs, this bracelet is hand-cast in solid bronze using the lost-wax method — the same technique used by artisans 2,500 years ago. The meander (Greek key) pattern wraps around the cuff and is polished to a warm golden finish.",
-    rating: 4.8,
-    reviews: [
-      { author: "Sophia K.", rating: 5, comment: "Gorgeous piece! The history behind it makes it even more special. Gets compliments every time I wear it.", date: "March 2025" },
-      { author: "Tom W.", rating: 4, comment: "Beautiful bracelet. Fits a bit snug but I was able to gently bend it open.", date: "April 2025" },
-    ],
-  },
+type Review = {
+  id: number;
+  author: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+};
+
+type Product = {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  image: string;
+  description: string;
+  seller_name: string;
+  seller_id: number;
 };
 
 function StarRating({ rating, size = "md" }: { rating: number; size?: "sm" | "md" | "lg" }) {
@@ -50,13 +32,33 @@ function StarRating({ rating, size = "md" }: { rating: number; size?: "sm" | "md
 }
 
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
-  const product = PRODUCTS[params.id];
   const { addToCart } = useCart();
+  const [product, setProduct] = useState<Product | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addedToCart, setAddedToCart] = useState(false);
   const [newRating, setNewRating] = useState(5);
   const [newReview, setNewReview] = useState("");
   const [newAuthor, setNewAuthor] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [addedToCart, setAddedToCart] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/products/${params.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setProduct(data.product);
+        setReviews(data.reviews || []);
+        setLoading(false);
+      });
+  }, [params.id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-[var(--muted)] text-lg">Loading product...</p>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -70,22 +72,46 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
     );
   }
 
+  const avgRating = reviews.length
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    : 0;
+
   function handleAddToCart() {
+    if (!product) return;
     addToCart({
-      id: Number(params.id),
+      id: product.id,
       name: product.name,
-      price: product.price,
+      price: Number(product.price),
       image: product.image,
-      seller: product.seller,
+      seller: product.seller_name,
     });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
   }
 
-  function handleReviewSubmit(e: React.FormEvent) {
+  async function handleReviewSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!newAuthor || !newReview) return;
-    setSubmitted(true);
+
+    const res = await fetch("/api/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productId: product!.id,
+        author: newAuthor,
+        rating: newRating,
+        comment: newReview,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setReviews((prev) => [data.review, ...prev]);
+      setSubmitted(true);
+      setNewAuthor("");
+      setNewReview("");
+      setNewRating(5);
+    }
   }
 
   return (
@@ -100,23 +126,25 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-10">
           <div className="grid md:grid-cols-2">
             <div className="overflow-hidden h-80 md:h-auto">
-              <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+              <img src={product.image || "/snowman-figurine.webp"} alt={product.name} className="w-full h-full object-cover" />
             </div>
             <div className="p-10 flex flex-col justify-between">
               <div>
                 <span className="text-xs bg-[var(--light)] text-[var(--primary)] px-3 py-1 rounded-full font-semibold">{product.category}</span>
                 <h1 className="text-3xl font-bold text-[var(--dark)] mt-3 mb-2">{product.name}</h1>
-                <div className="flex items-center gap-2 mb-4">
-                  <StarRating rating={product.rating} />
-                  <span className="text-sm text-[var(--muted)]">{product.rating.toFixed(1)} ({product.reviews.length} reviews)</span>
-                </div>
+                {avgRating > 0 && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <StarRating rating={avgRating} />
+                    <span className="text-sm text-[var(--muted)]">{avgRating.toFixed(1)} ({reviews.length} reviews)</span>
+                  </div>
+                )}
                 <p className="text-[var(--muted)] leading-relaxed mb-6">{product.description}</p>
-                <Link href={`/sellers/${product.sellerId}`} className="text-sm font-medium text-[var(--primary)] hover:underline">
-                  🎨 Sold by {product.seller}
-                </Link>
+                <p className="text-sm font-medium text-[var(--primary)]">
+                  🎨 Sold by {product.seller_name}
+                </p>
               </div>
               <div className="mt-8">
-                <p className="text-4xl font-bold text-[var(--primary)] mb-4">${product.price.toFixed(2)}</p>
+                <p className="text-4xl font-bold text-[var(--primary)] mb-4">${Number(product.price).toFixed(2)}</p>
                 <button
                   onClick={handleAddToCart}
                   className={`w-full font-semibold py-4 rounded-xl transition text-lg ${
@@ -134,18 +162,24 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
 
         <section className="bg-white rounded-2xl shadow p-8 mb-8">
           <h2 className="text-2xl font-bold text-[var(--primary)] mb-6">Customer Reviews</h2>
-          <div className="space-y-6">
-            {product.reviews.map((review, i) => (
-              <div key={i} className="border-b border-gray-100 last:border-0 pb-6 last:pb-0">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-[var(--dark)]">{review.author}</span>
-                  <span className="text-xs text-[var(--muted)]">{review.date}</span>
+          {reviews.length === 0 ? (
+            <p className="text-[var(--muted)]">No reviews yet. Be the first!</p>
+          ) : (
+            <div className="space-y-6">
+              {reviews.map((review) => (
+                <div key={review.id} className="border-b border-gray-100 last:border-0 pb-6 last:pb-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-semibold text-[var(--dark)]">{review.author}</span>
+                    <span className="text-xs text-[var(--muted)]">
+                      {new Date(review.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                    </span>
+                  </div>
+                  <StarRating rating={review.rating} size="sm" />
+                  <p className="text-[var(--dark)] mt-2 text-sm leading-relaxed">{review.comment}</p>
                 </div>
-                <StarRating rating={review.rating} size="sm" />
-                <p className="text-[var(--dark)] mt-2 text-sm leading-relaxed">{review.comment}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="bg-white rounded-2xl shadow p-8">
@@ -154,7 +188,9 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
             <div className="text-center py-6">
               <p className="text-4xl mb-3">🎉</p>
               <p className="text-lg font-semibold text-[var(--dark)]">Thank you for your review!</p>
-              <p className="text-[var(--muted)] text-sm mt-1">Your feedback helps other shoppers.</p>
+              <button onClick={() => setSubmitted(false)} className="mt-3 text-sm text-[var(--primary)] hover:underline">
+                Leave another review
+              </button>
             </div>
           ) : (
             <div className="space-y-5">

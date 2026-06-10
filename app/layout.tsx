@@ -44,6 +44,11 @@ function Navbar() {
           {session ? (
             <>
               <span className="text-sm text-white/80">Hi, {session.user?.name?.split(" ")[0]}</span>
+              {(session.user as { role?: string }).role === "seller" && (
+                <Link href="/dashboard" className="px-5 py-2 bg-[var(--accent)] text-[var(--primary)] font-medium rounded hover:bg-yellow-400 transition text-sm">
+                  Dashboard
+                </Link>
+              )}
               <button
                 onClick={() => signOut()}
                 className="px-5 py-2 border border-white rounded hover:bg-white hover:text-[var(--primary)] transition text-sm"
