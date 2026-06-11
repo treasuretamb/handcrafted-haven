@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Handshake, Leaf, Sparkles } from 'lucide-react';
 
 export default function AboutPage() {
   return (
@@ -27,9 +28,9 @@ export default function AboutPage() {
           <h2 className="text-3xl font-bold text-[var(--primary)] mb-8 text-center">What We Stand For</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { title: "Community First", desc: "We believe in fostering genuine connections between makers and buyers, building a community that values craft and creativity." },
-              { title: "Sustainability", desc: "We encourage artisans to use eco-friendly, ethically sourced materials and sustainable practices in their work." },
-              { title: "Authenticity", desc: "Every item on our platform is genuinely handcrafted. No mass production, no shortcuts — just real skill and dedication." },
+              { icon: <Handshake />, title: "Community First", desc: "We believe in fostering genuine connections between makers and buyers, building a community that values craft and creativity." },
+              { icon: <Leaf />, title: "Sustainability", desc: "We encourage artisans to use eco-friendly, ethically sourced materials and sustainable practices in their work." },
+              { icon: <Sparkles />, title: "Authenticity", desc: "Every item on our platform is genuinely handcrafted. No mass production, no shortcuts — just real skill and dedication." },
             ].map((value) => (
               <div key={value.title} className="bg-white rounded-xl shadow p-6 text-center">
                 <p className="text-5xl mb-4">{value.icon}</p>
