@@ -1,49 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import pool from "../../../lib/db";
-import { initDb } from "../../../lib/initDb";
-import { auth } from "../../../auth";
+import pool from "../../../../lib/db";
 
-export async function GET() {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await initDb();
-    const result = await pool.query(`
-      SELECT p.*, u.name as seller_name
+    const { id } = await params;
+
+    const productResult = await pool.query(`
+      SELECT p.*, u.name as seller_name, u.id as seller_user_id
       FROM products p
       JOIN users u ON p.seller_id = u.id
-      ORDER BY p.created_at DESC
-    `);
-    return NextResponse.json({ products: result.rows });
-  } catch (error) {
-    console.error("Get products error:", error);
-    return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
-  }
-}
+      WHERE p.id = $1
+    `, [id]);
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session || (session.user as { role?: string }).role !== "seller") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (productResult.rows.length === 0) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    const { name, description, price, category, image } = await req.json();
+    const reviewsResult = await pool.query(`
+      SELECT * FROM reviews WHERE product_id = $1 ORDER BY created_at DESC
+    `, [id]);
 
-    if (!name || !price || !category) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
-
-    const sellerId = (session.user as { id?: string }).id;
-
-    const result = await pool.query(
-      `INSERT INTO products (name, description, price, category, image, seller_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [name, description, price, category, image || "/snowman-figurine.webp", sellerId]
-    );
-
-    return NextResponse.json({ product: result.rows[0] }, { status: 201 });
+    return NextResponse.json({
+      product: productResult.rows[0],
+      reviews: reviewsResult.rows,
+    });
   } catch (error) {
-    console.error("Create product error:", error);
-    return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
+    console.error("Get product error:", error);
+    return NextResponse.json({ error: "Failed to fetch product" }, { status: 500 });
   }
 }
