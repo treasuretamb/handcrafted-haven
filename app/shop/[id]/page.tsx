@@ -50,6 +50,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     if (!productId) return;
     fetch(`/api/products/${productId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setProduct(data.product);
+        setReviews(data.reviews || []);
+        setLoading(false);
+      });
+  }, [productId]);
 
   if (loading) {
     return (
