@@ -31,7 +31,7 @@ function StarRating({ rating, size = "md" }: { rating: number; size?: "sm" | "md
   );
 }
 
-export default function ProductDetailPage({ params }: { params: { id: string } }) {
+export default function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -41,16 +41,15 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   const [newReview, setNewReview] = useState("");
   const [newAuthor, setNewAuthor] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [productId, setProductId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/products/${params.id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setProduct(data.product);
-        setReviews(data.reviews || []);
-        setLoading(false);
-      });
-  }, [params.id]);
+    params.then(({ id }) => setProductId(id));
+  }, [params]);
+
+  useEffect(() => {
+    if (!productId) return;
+    fetch(`/api/products/${productId}`)
 
   if (loading) {
     return (
